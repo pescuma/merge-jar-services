@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<antlib>
+	<typedef name="merge-services" classname="org.pescuma.mergeservices.MergeServicesTask" />
+</antlib>
