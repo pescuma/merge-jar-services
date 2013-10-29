@@ -1,7 +1,10 @@
-merge-jar-services
-==================
+# merge-jar-services
 
-Ant task to merge services inside jar files
+Ant task to merge services from jar files.
+
+
+### Usage
+
 
 To use, first register the task:
 ```
