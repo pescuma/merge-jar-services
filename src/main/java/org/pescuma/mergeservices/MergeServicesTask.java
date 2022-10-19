@@ -5,6 +5,14 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -177,7 +185,16 @@ public final class MergeServicesTask extends Task {
 		final Map<String, List<String>> once = new HashMap<>();
 		final Map<String, String> services = new HashMap<>();
 		// Open output file (new JDK-8 style)
-		try(	final FileOutputStream fos = new FileOutputStream(this.dest, false);
+		File destination;
+		if (this.dest.isDirectory()) {
+			destination = new File(this.dest, "temp.jar");
+			if (destination.exists()) {
+				throw new BuildException("Cannot write to existing temporary file: " + destination.getAbsolutePath());
+			}
+		} else {
+			destination = dest;
+		}
+		try(	final FileOutputStream fos = new FileOutputStream(destination, false);
 				final ZipOutputStream  zos = new ZipOutputStream (fos)) {
 			for (final FileSet fileSet : this.filesets) {
 				final DirectoryScanner ds = fileSet.getDirectoryScanner();
@@ -210,7 +227,44 @@ public final class MergeServicesTask extends Task {
 			// META-INF/web-fragment.xml
 			// META-INF/resources/WEB-INF/jetty8-web.xml
 		} catch(final Exception e) {
-			throw new BuildException("Error writing "+this.dest.getAbsolutePath(), e);
+			throw new BuildException("Error writing " + destination.getAbsolutePath(), e);
+		}
+		if (this.dest.isDirectory()) {
+			try (FileSystem zipFs = FileSystems.newFileSystem(destination.toPath(), null)) {
+				for (Path root : zipFs.getRootDirectories()) {
+					Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
+						@Override
+						public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+							if (!file.startsWith("/META-INF")) {
+								return super.visitFile(file, attrs);
+							}
+							Path newPath = Paths.get(dest.getPath(), file.toString());
+							Files.copy(file, newPath);
+							newPath.toFile().setLastModified(attrs.lastModifiedTime().toMillis());
+							return super.visitFile(file, attrs);
+						}
+
+						@Override
+						public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+							if (!dir.startsWith("/META-INF")) {
+								return super.visitFile(dir, attrs);
+							}
+							Path newPath = Paths.get(dest.getPath(), dir.toString());
+							File file = newPath.toFile();
+							if (!attrs.isDirectory()) {
+								file = file.getParentFile();
+							}
+							if (file.mkdirs()) {
+								file.setLastModified(attrs.lastModifiedTime().toMillis());
+							}
+							return super.preVisitDirectory(dir, attrs);
+						}
+					});
+				}
+			} catch (Exception e) {
+				throw new BuildException("Error writing " + this.dest.getAbsolutePath(), e);
+			}
+			destination.delete();
 		}
 	}
 }
