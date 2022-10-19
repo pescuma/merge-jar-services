@@ -27,7 +27,7 @@ import org.apache.tools.ant.types.selectors.SelectorUtils;
 public final class MergeServicesTask extends Task {
 
 	private File dest;
-	private final List<FileSet> filesets = new ArrayList<FileSet>();
+	private final List<FileSet> filesets = new ArrayList<>();
 	private final List<Exclude> excludes = new ArrayList<>();
 
 	public static class Exclude {
