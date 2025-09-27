@@ -6,7 +6,7 @@
     <properties>
         <maven.compiler.release>8</maven.compiler.release>
         <!-- For broad compatibility reasons, keep the ant version as low as possible -->
-        <ant.version>1.7.0</ant.version>
+        <ant.version>1.10.11</ant.version>
     </properties>
     <dependencies>
         <dependency>
